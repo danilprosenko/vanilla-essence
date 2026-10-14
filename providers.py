@@ -1,4 +1,5 @@
 import a2s
+from a2s import dayzquery
 import logging
 
 logger = logging.getLogger(__name__)
@@ -31,12 +32,12 @@ class A2SProvider:
             server_time = None
             queue = None
 
-            # Пробуем вытащить keywords — там DayZ хранит очередь и время
+            # Используем dayzquery для декодирования правил DayZ
             try:
-                rules = a2s.rules(address, timeout=5.0)
+                rules = dayzquery.dayz_rules(address, timeout=5.0)
 
-                # В Java это поле называется "keywords"
-                keywords = rules.get("keywords", "")
+                # В объекте rules есть поле keywords, которое содержит время и очередь
+                keywords = rules.keywords if hasattr(rules, 'keywords') else ""
 
                 if keywords:
                     # В Java: s.split(",")
@@ -53,7 +54,7 @@ class A2SProvider:
                         server_time = parts[-1]
 
             except Exception as e:
-                logger.debug("Не удалось получить rules: %s", e)
+                logger.debug("Не удалось получить rules через dayzquery: %s", e)
 
             return ServerOnline(
                 current_players=info.player_count,
