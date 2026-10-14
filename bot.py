@@ -29,15 +29,14 @@ interval = int(instance["updater"]["intervalSeconds"])
 # ---------- Токен из переменной окружения ----------
 TOKEN = os.environ.get("DISCORD_TOKEN") or discord_config.get("token")
 
-if not TOKEN:
+if not TOKEN or TOKEN == "YOUR_BOT_TOKEN_HERE":
     raise ValueError(
         "Не задан токен Discord. "
-        "Укажите переменную окружения DISCORD_TOKEN "
-        "или заполните поле discord.token в config.json."
+        "Укажите переменную окружения DISCORD_TOKEN."
     )
 
 
-# ---------- Провайдер онлайна ----------
+# ---------- Провайдер ----------
 provider = get_provider(server_config.get("onlineProvider", "A2S"))
 
 
@@ -48,7 +47,7 @@ bot = discord.Client(intents=intents)
 
 # ---------- Вспомогательные функции ----------
 def get_time_emoji(server_time):
-    """Возвращает эмодзи дня или ночи по игровому времени"""
+    """Логика из DiscordBot.getTimeEmoji()"""
     try:
         hour = int(str(server_time).split(":")[0])
         if 6 <= hour < 20:
@@ -58,32 +57,44 @@ def get_time_emoji(server_time):
         return emojis["day"]
 
 
+def get_queue_block(server_online):
+    """Логика из DiscordBot.getQueueBlock()"""
+    should_show = server_online.queue_active or status_config["showQueueIfNotActive"]
+
+    if not should_show:
+        return ""
+
+    queue_value = server_online.queue_size if server_online.queue_size is not None else "0"
+
+    return (status_config["queueBlock"]
+            .replace("${emoji.queue}", emojis["queue"])
+            .replace("${queue}", str(queue_value)))
+
+
 def format_presence(server_online):
-    """Формирует строку статуса по шаблону из конфига"""
+    """Логика из DiscordBot.formatPresenceMessage()"""
     if not server_online.online:
         return status_config["serverOfflineMessage"]
 
     time_emoji = get_time_emoji(server_online.server_time)
 
-    queue_block = ""
-    if server_online.queue_active or status_config["showQueueIfNotActive"]:
-        queue_block = status_config["queueBlock"]
-        queue_block = queue_block.replace("${emoji.queue}", emojis["queue"])
-        queue_block = queue_block.replace("${queue}", str(server_online.queue_size))
+    players = server_online.current_players if server_online.current_players is not None else "?"
+    max_players = server_online.max_players if server_online.max_players is not None else "?"
+    time_str = server_online.server_time if server_online.server_time else "??:??"
 
     message = status_config["message"]
     message = message.replace("${emoji.player}", emojis["player"])
-    message = message.replace("${online}", str(server_online.current_players))
-    message = message.replace("${max}", str(server_online.max_players))
+    message = message.replace("${online}", str(players))
+    message = message.replace("${max}", str(max_players))
     message = message.replace("${emoji.daytime}", time_emoji)
-    message = message.replace("${time}", str(server_online.server_time))
-    message = message.replace("${status.queueBlock}", queue_block)
+    message = message.replace("${time}", str(time_str))
+    message = message.replace("${status.queueBlock}", get_queue_block(server_online))
 
     return message.strip()
 
 
 def get_activity(status_text):
-    """Преобразует строку конфига в объект Activity для discord.py"""
+    """Логика из DiscordBot.getActivityType()"""
     activity_type = str(status_config.get("activityType", "PLAYING")).upper()
 
     if activity_type == "LISTENING":
@@ -93,7 +104,6 @@ def get_activity(status_text):
     if activity_type == "COMPETING":
         return discord.Activity(type=discord.ActivityType.competing, name=status_text)
 
-    # По умолчанию — PLAYING
     return discord.Game(name=status_text)
 
 
