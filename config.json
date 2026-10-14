@@ -12,18 +12,13 @@
         "onlineProvider": "A2S"
       },
       "emojis": {
-        "player": "👥",
-        "day": "☀️",
-        "night": "🌙",
-        "queue": "👥"
+        "player": "👥"
       },
       "updater": {
         "intervalSeconds": 30
       },
       "status": {
-        "message": "${emoji.player} ${online} / ${max} ${emoji.daytime} ${time} ${status.queueBlock}",
-        "queueBlock": "${emoji.queue} ${queue}",
-        "showQueueIfNotActive": true,
+        "message": "${emoji.player} ${online} / ${max}",
         "activityType": "PLAYING",
         "serverOfflineMessage": "Server offline"
       }
