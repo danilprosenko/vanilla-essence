@@ -32,15 +32,22 @@ class A2SProvider:
             server_time = None
             queue = None
 
+            # --- Пытаемся получить правила DayZ через dayzquery ---
             try:
                 rules = dayzquery.dayz_rules(address, timeout=5.0)
 
-                # time_left — секунды до смены фазы (день/ночь)
-                if hasattr(rules, 'time_left') and rules.time_left:
-                    server_time = self._seconds_to_time(rules.time_left)
+                time_left = getattr(rules, 'time_left', None)
+                logger.info("DayZ rules: time_left=%s, island=%s, mods=%s",
+                            time_left,
+                            getattr(rules, 'island', None),
+                            len(getattr(rules, 'mods', [])))
 
-                # Очередь — из info.keywords
-                keywords = getattr(info, 'keywords', "")
+                # time_left — секунды до конца фазы. Если > 0, конвертируем.
+                if time_left and time_left > 0:
+                    server_time = self._seconds_to_time(time_left)
+
+                # Очередь — из info.keywords (поле lqs)
+                keywords = getattr(info, 'keywords', "") or ""
                 if keywords:
                     parts = keywords.split(",")
                     for part in parts:
@@ -49,7 +56,7 @@ class A2SProvider:
                             break
 
             except Exception as e:
-                logger.debug("Не удалось получить rules через dayzquery: %s", e)
+                logger.error("dayzquery failed: %s", e)
 
             return ServerOnline(
                 current_players=info.player_count,
@@ -75,7 +82,7 @@ class A2SProvider:
 
 
 def get_provider(provider_type):
-    """Фабрика провайдеров"""
+    """Фабрика провайдеров (аналог OnlineProviderFactory)"""
     providers = {
         "A2S": A2SProvider(),
     }
