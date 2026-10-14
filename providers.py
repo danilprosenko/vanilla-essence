@@ -1,5 +1,5 @@
 import a2s
-from a2s import dayzquery
+import dayzquery
 import logging
 
 logger = logging.getLogger(__name__)
@@ -32,18 +32,14 @@ class A2SProvider:
             server_time = None
             queue = None
 
-            # Используем dayzquery для декодирования правил DayZ
             try:
                 rules = dayzquery.dayz_rules(address, timeout=5.0)
 
-                # DayzRules содержит time_left (время до конца дня/ночи?)
-                # и другие поля. Для времени суток нужно вычислить.
-                # В DayZ time_left — это секунды до конца текущей фазы (день/ночь)
+                # time_left — секунды до смены фазы (день/ночь)
                 if hasattr(rules, 'time_left') and rules.time_left:
                     server_time = self._seconds_to_time(rules.time_left)
 
-                # Очередь: dayzquery не возвращает очередь напрямую,
-                # нужно смотреть keywords в info
+                # Очередь — из info.keywords
                 keywords = getattr(info, 'keywords', "")
                 if keywords:
                     parts = keywords.split(",")
@@ -79,7 +75,7 @@ class A2SProvider:
 
 
 def get_provider(provider_type):
-    """Фабрика провайдеров (аналог OnlineProviderFactory)"""
+    """Фабрика провайдеров"""
     providers = {
         "A2S": A2SProvider(),
     }
