@@ -1,0 +1,32 @@
+{
+  "version": 5,
+  "instances": [
+    {
+      "discord": {
+        "token": ""
+      },
+      "server": {
+        "ip": "45.11.18.95",
+        "port": 16122,
+        "steamQueryPort": 16008,
+        "onlineProvider": "A2S"
+      },
+      "emojis": {
+        "player": "👥",
+        "day": "☀️",
+        "night": "🌙",
+        "queue": "👥"
+      },
+      "updater": {
+        "intervalSeconds": 30
+      },
+      "status": {
+        "message": "${emoji.player} ${online} / ${max} ${emoji.daytime} ${time} ${status.queueBlock}",
+        "queueBlock": "${emoji.queue} ${queue}",
+        "showQueueIfNotActive": true,
+        "activityType": "PLAYING",
+        "serverOfflineMessage": "Server offline"
+      }
+    }
+  ]
+}
