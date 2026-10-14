@@ -1,15 +1,14 @@
 import a2s
-from a2s import dayzquery
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class ServerOnline:
-    """Аналог ServerOnlineFun из Java-версии"""
+    """Аналог ServerOnlineFun из Java"""
 
-    def __init__(self, current_players, max_players, server_time,
-                 queue_size, queue_active, online):
+    def __init__(self, current_players=None, max_players=None, server_time=None,
+                 queue_size=None, queue_active=False, online=False):
         self.current_players = current_players
         self.max_players = max_players
         self.server_time = server_time
@@ -19,35 +18,39 @@ class ServerOnline:
 
 
 class A2SProvider:
-    """Прямой опрос сервера DayZ по протоколу Valve A2S"""
+    """Прямой опрос сервера DayZ по A2S (логика из A2SOnlineProvider.java)"""
 
     def get_server_online(self, server_config):
-        address = (server_config["ip"], int(server_config["steamQueryPort"]))
+        ip = server_config["ip"]
+        port = int(server_config["steamQueryPort"])
+        address = (ip, port)
 
         try:
             info = a2s.info(address, timeout=5.0)
 
-            server_time = "12:00"
-            queue_size = 0
-            queue_active = False
+            server_time = None
+            queue = None
 
+            # Пробуем вытащить keywords — там DayZ хранит очередь и время
             try:
-                rules = dayzquery.dayz_rules(address, timeout=5.0)
+                rules = a2s.rules(address, timeout=5.0)
 
-                if "dayz_time" in rules:
-                    server_time = rules["dayz_time"]
-                elif "time" in rules:
-                    server_time = rules["time"]
+                # В Java это поле называется "keywords"
+                keywords = rules.get("keywords", "")
 
-                if "dayz_queue_size" in rules:
-                    queue_size = int(rules["dayz_queue_size"])
-                elif "queue_size" in rules:
-                    queue_size = int(rules["queue_size"])
+                if keywords:
+                    # В Java: s.split(",")
+                    parts = keywords.split(",")
 
-                if "dayz_queue_active" in rules:
-                    queue_active = rules["dayz_queue_active"] == "1"
-                elif "queue_active" in rules:
-                    queue_active = rules["queue_active"] == "1"
+                    # Ищем очередь: строка начинается с "lqs"
+                    for part in parts:
+                        if part.startswith("lqs") and len(part) > 3:
+                            queue = part[3:]
+                            break
+
+                    # Время — последний элемент списка
+                    if parts:
+                        server_time = parts[-1]
 
             except Exception as e:
                 logger.debug("Не удалось получить rules: %s", e)
@@ -56,17 +59,14 @@ class A2SProvider:
                 current_players=info.player_count,
                 max_players=info.max_players,
                 server_time=server_time,
-                queue_size=queue_size,
-                queue_active=queue_active,
+                queue_size=queue,
+                queue_active=(queue is not None and queue != "0"),
                 online=True
             )
 
         except Exception as e:
-            logger.error("Сервер недоступен (%s:%s): %s",
-                         server_config["ip"],
-                         server_config["steamQueryPort"],
-                         e)
-            return ServerOnline(0, 0, "00:00", 0, False, False)
+            logger.error("Сервер недоступен (%s:%s): %s", ip, port, e)
+            return ServerOnline(online=False)
 
 
 def get_provider(provider_type):
